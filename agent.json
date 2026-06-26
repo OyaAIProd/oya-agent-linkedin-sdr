@@ -362,6 +362,16 @@
       "platform": "linkedin",
       "name": "LinkedIn \u2014 ",
       "is_active": true
+    },
+    {
+      "platform": "hunter",
+      "name": "Hunter.io Gateway",
+      "is_active": true
+    },
+    {
+      "platform": "brevo",
+      "name": "Brevo Gateway",
+      "is_active": true
     }
   ],
   "routines": [
