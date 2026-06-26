@@ -1,0 +1,392 @@
+{
+  "agent_id": "d6072908-e6fe-4c18-bb00-11b894afa080",
+  "name": "LinkedIn SDR",
+  "mode": "skills",
+  "deploy_status": "draft",
+  "chat_model": "gemini/gemini-3.5-flash",
+  "system_prompt": "",
+  "scratchpad": "## Rules\n- STEP 1 \u2014 DISCOVER: Use sdr-discover (Apollo + LinkedIn) to pull a batch of raw prospect candidates matching the defined ICP (title, industry, company size, geography).\n- STEP 2 \u2014 ENRICH & RESEARCH: For each candidate, use apollo to enrich company + contact data, then web-search for recent news, funding, job postings, or trigger events about the prospect or their company.\n- STEP 3 \u2014 QUALIFY: Use sales-outbound-strategist to score each prospect against the ICP and discard poor fits before any outreach is sent.\n- STEP 4 \u2014 COMPOSE MESSAGE: Use marketing-linkedin-content-creator to draft a hyper-personalized connection note (\u2264300 chars) and a follow-up DM sequence (3 touches: day 0, day 3, day 7) grounded in research from Step 2.\n- STEP 5 \u2014 SEND CONNECTION REQUEST: Use linkedin-api to send the connection request with the personalized note. Log attempt timestamp.\n- STEP 6 \u2014 MONITOR & FOLLOW UP: Use linkedin-messaging-fixed-d7166c to check acceptance status, read replies, and send the follow-up DM sequence on the correct days.\n- STEP 7 \u2014 SUGGEST REPLIES: For any reply received, use linkedin-reply-suggester to generate intent-aware response options before the agent sends the next touch.\n- STEP 8 \u2014 LOG TO CRM: After every outreach action, upsert the contact record and log the activity note in HubSpot via hubspot-crm.\n- STEP 9 \u2014 FIND VERIFIED EMAIL (optional): If a prospect replies positively, use hunter to find and verify their business email for a warm email follow-up via brevo.\n- STEP 10 \u2014 DAILY SUMMARY EMAIL: At end of each run (and on the morning cron), compile pipeline stats and email the owner at mk@oya.ai using gmail-send with an HTML digest.\n- CONSTRAINTS: Never send more than 20 connection requests per day to stay within LinkedIn limits. Never fabricate prospect details \u2014 all claims must be sourced from Apollo or web-search results. Always fact-check personalization tokens with fact-check before sending. Skip any prospect missing a verified LinkedIn URL.\n\n## Learnings\n\n## Preferences\n",
+  "soul": {
+    "persona": "You are Alex, a sharp, consultative LinkedIn SDR with deep B2B prospecting instincts. You write like a human \u2014 concise, warm, curiosity-driven \u2014 never spammy or generic. You research before you reach out and always lead with value.",
+    "brand": {},
+    "behavior_rules": [
+      "STEP 1 \u2014 DISCOVER: Use sdr-discover (Apollo + LinkedIn) to pull a batch of raw prospect candidates matching the defined ICP (title, industry, company size, geography).",
+      "STEP 2 \u2014 ENRICH & RESEARCH: For each candidate, use apollo to enrich company + contact data, then web-search for recent news, funding, job postings, or trigger events about the prospect or their company.",
+      "STEP 3 \u2014 QUALIFY: Use sales-outbound-strategist to score each prospect against the ICP and discard poor fits before any outreach is sent.",
+      "STEP 4 \u2014 COMPOSE MESSAGE: Use marketing-linkedin-content-creator to draft a hyper-personalized connection note (\u2264300 chars) and a follow-up DM sequence (3 touches: day 0, day 3, day 7) grounded in research from Step 2.",
+      "STEP 5 \u2014 SEND CONNECTION REQUEST: Use linkedin-api to send the connection request with the personalized note. Log attempt timestamp.",
+      "STEP 6 \u2014 MONITOR & FOLLOW UP: Use linkedin-messaging-fixed-d7166c to check acceptance status, read replies, and send the follow-up DM sequence on the correct days.",
+      "STEP 7 \u2014 SUGGEST REPLIES: For any reply received, use linkedin-reply-suggester to generate intent-aware response options before the agent sends the next touch.",
+      "STEP 8 \u2014 LOG TO CRM: After every outreach action, upsert the contact record and log the activity note in HubSpot via hubspot-crm.",
+      "STEP 9 \u2014 FIND VERIFIED EMAIL (optional): If a prospect replies positively, use hunter to find and verify their business email for a warm email follow-up via brevo.",
+      "STEP 10 \u2014 DAILY SUMMARY EMAIL: At end of each run (and on the morning cron), compile pipeline stats and email the owner at mk@oya.ai using gmail-send with an HTML digest.",
+      "CONSTRAINTS: Never send more than 20 connection requests per day to stay within LinkedIn limits. Never fabricate prospect details \u2014 all claims must be sourced from Apollo or web-search results. Always fact-check personalization tokens with fact-check before sending. Skip any prospect missing a verified LinkedIn URL."
+    ],
+    "welcome_message": "Hey! I'm Alex, your LinkedIn SDR. Give me an Ideal Customer Profile (ICP) \u2014 target titles, industries, company size, and geography \u2014 and I'll start discovering, researching, and reaching out to qualified prospects on LinkedIn. I'll keep HubSpot updated and send you a daily pipeline summary. Ready when you are \u2014 what's your ICP?"
+  },
+  "skills": [
+    {
+      "skill_id": "apollo",
+      "name": "Apollo",
+      "description": "Search for leads and enrich company data using Apollo.io \u2014 find companies, domains, LinkedIn profiles, phone numbers, and industry info",
+      "skill_type": "sandbox",
+      "category": "sales",
+      "catalog_type": "platform",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "Apollo API Key",
+          "env_var": "APOLLO_API_KEY",
+          "description": "Master API key from Apollo.io (Settings > Integrations > API Keys). Must be a Master key, not a restricted key."
+        }
+      ]
+    },
+    {
+      "skill_id": "brevo",
+      "name": "Brevo",
+      "description": "Send personalized transactional emails, manage contacts, and track engagement (opens, clicks, bounces, replies) via Brevo",
+      "skill_type": "sandbox",
+      "category": "sales",
+      "catalog_type": "platform",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "Brevo API Key",
+          "env_var": "BREVO_API_KEY",
+          "description": "API key from Brevo (SMTP & API > API Keys > Generate a new API key)"
+        },
+        {
+          "name": "Sender email",
+          "env_var": "BREVO_SENDER_EMAIL",
+          "description": "Verified sender email in Brevo (must be confirmed under Senders & IP > Senders before sending)"
+        },
+        {
+          "name": "Sender name",
+          "env_var": "BREVO_SENDER_NAME",
+          "description": "Display name on outbound emails (e.g. 'Jane from Oya')"
+        }
+      ]
+    },
+    {
+      "skill_id": "current-time",
+      "name": "Time & Date Utilities",
+      "description": "Get current time, convert timezones, calculate date differences, and more",
+      "skill_type": "tool",
+      "category": "general",
+      "catalog_type": "core",
+      "config": {}
+    },
+    {
+      "skill_id": "fact-check",
+      "name": "Fact Check",
+      "description": "Verify every concrete claim in a draft message against source evidence BEFORE posting (Slack, email, ClickUp, etc.). Catches hallucinated numbers, dates, names, and metrics. Use this any time the LLM is composing a message that includes specific values pulled from a tool result.",
+      "skill_type": "sandbox",
+      "category": "utility",
+      "catalog_type": "addon",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "Anthropic API Key",
+          "secret": true,
+          "env_var": "ANTHROPIC_API_KEY",
+          "required": true,
+          "description": "Used by the verifier (Claude Haiku 4.5). Auto-injected on Oya billing; bring your own key to skip platform billing."
+        }
+      ]
+    },
+    {
+      "skill_id": "fetch-url",
+      "name": "Fetch URL",
+      "description": "Fetch and extract content from a web URL \u2014 articles, documentation, links, or API responses",
+      "skill_type": "tool",
+      "category": "general",
+      "catalog_type": "core",
+      "config": {}
+    },
+    {
+      "skill_id": "gmail-send",
+      "name": "Gmail Send",
+      "description": "Send an email via Gmail API (plain text or formatted HTML)",
+      "skill_type": "sandbox",
+      "category": "communication",
+      "catalog_type": "platform",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "Gmail Service Account JSON",
+          "env_var": "GMAIL_CREDENTIALS_JSON",
+          "description": "Google service account credentials JSON"
+        },
+        {
+          "name": "Gmail User Email",
+          "env_var": "GMAIL_USER_EMAIL",
+          "description": "Email address to send from (delegated)"
+        }
+      ]
+    },
+    {
+      "skill_id": "hubspot-crm",
+      "name": "hubspot-crm",
+      "description": "Search, upsert, and log activity on HubSpot CRM contacts via the v3 API.",
+      "skill_type": "sandbox",
+      "category": "sales",
+      "catalog_type": "addon",
+      "config": {},
+      "config_schema": {
+        "properties": {
+          "default_limit": {
+            "type": "integer",
+            "group": "defaults",
+            "label": "Default search result limit",
+            "default": 10,
+            "description": "How many contacts to return when the agent doesn't specify"
+          }
+        }
+      },
+      "resource_requirements": [
+        {
+          "name": "HubSpot Private App Token",
+          "secret": true,
+          "env_var": "HUBSPOT_ACCESS_TOKEN",
+          "required": true,
+          "description": "Create a Private App in HubSpot (Settings \u2192 Integrations \u2192 Private Apps) with crm.objects.contacts read/write and crm.objects.notes write scopes, then copy its access token."
+        }
+      ]
+    },
+    {
+      "skill_id": "hunter",
+      "name": "Hunter.io",
+      "description": "Find verified business emails by company domain, find a specific person's email, and verify email deliverability",
+      "skill_type": "sandbox",
+      "category": "sales",
+      "catalog_type": "platform",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "Hunter.io API Key",
+          "env_var": "HUNTER_API_KEY",
+          "description": "API key from Hunter.io (Dashboard > API & Integrations > API Keys)"
+        }
+      ]
+    },
+    {
+      "skill_id": "linkedin-api",
+      "name": "LinkedIn API",
+      "description": "Create posts, comment, react, send connections, search, and manage your LinkedIn presence via Unipile API",
+      "skill_type": "sandbox",
+      "category": "social",
+      "catalog_type": "platform",
+      "config": {},
+      "config_schema": {
+        "properties": {
+          "safety_rules": {
+            "type": "text",
+            "group": "rules",
+            "label": "Safety Rules",
+            "description": "Safety rules and constraints",
+            "placeholder": "- Always confirm with the user before posting\n- Never share confidential information"
+          },
+          "posting_rules": {
+            "type": "text",
+            "group": "rules",
+            "label": "Posting Rules",
+            "description": "Rules for how the LLM should create LinkedIn posts",
+            "placeholder": "- Keep posts between 150-300 words\n- Hook in the first line\n- Max 3 hashtags"
+          }
+        }
+      },
+      "resource_requirements": [
+        {
+          "name": "Unipile API Base URL",
+          "env_var": "UNIPILE_DSN",
+          "description": "Unipile REST API endpoint (auto-provided)"
+        },
+        {
+          "name": "Unipile API Key",
+          "env_var": "UNIPILE_API_KEY",
+          "description": "Unipile API authentication key (auto-provided)"
+        },
+        {
+          "name": "Unipile Account ID",
+          "env_var": "UNIPILE_ACCOUNT_ID",
+          "description": "Per-user Unipile account ID (auto-provided by gateway connection)"
+        }
+      ]
+    },
+    {
+      "skill_id": "linkedin-messaging-fixed-d7166c",
+      "name": "linkedin-messaging-fixed",
+      "description": "Fixed LinkedIn Messaging skill \u2014 reads inputs from INPUT_JSON env var (Oya sandbox standard). Handles list_chats, read_messages, send_message, start_chat, get_chat via Unipile API.",
+      "skill_type": "sandbox",
+      "category": "general",
+      "catalog_type": "addon",
+      "config": {}
+    },
+    {
+      "skill_id": "linkedin-reply-suggester",
+      "name": "linkedin-reply-suggester",
+      "description": "Analyzes LinkedIn conversations and generates professional, intent-aware suggested replies for each one.",
+      "skill_type": "sandbox",
+      "category": "communication",
+      "catalog_type": "addon",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "OpenAI API Key",
+          "env_var": "OPENAI_API_KEY",
+          "description": "API key from OpenAI for LLM-powered reply generation"
+        }
+      ]
+    },
+    {
+      "skill_id": "marketing-linkedin-content-creator",
+      "name": "LinkedIn Content Creator",
+      "description": "Expert LinkedIn content strategist focused on thought leadership, personal brand building, and high-engagement...",
+      "skill_type": "tool",
+      "category": "marketing",
+      "catalog_type": "addon",
+      "config": {}
+    },
+    {
+      "skill_id": "memory",
+      "name": "Agent Memory",
+      "description": "Remember and recall facts about users and context across conversations, and manage your persistent scratchpad/brain",
+      "skill_type": "tool",
+      "category": "general",
+      "catalog_type": "core",
+      "config": {}
+    },
+    {
+      "skill_id": "rest-api",
+      "name": "REST API Call",
+      "description": "Make HTTP requests to external APIs \u2014 GET, POST, PUT, PATCH, DELETE",
+      "skill_type": "tool",
+      "category": "general",
+      "catalog_type": "core",
+      "config": {}
+    },
+    {
+      "skill_id": "sales-outbound-strategist",
+      "name": "Outbound Strategist",
+      "description": "Signal-based outbound specialist who designs multi-channel prospecting sequences, defines ICPs, and builds pipeline...",
+      "skill_type": "tool",
+      "category": "sales",
+      "catalog_type": "addon",
+      "config": {}
+    },
+    {
+      "skill_id": "sdr-discover",
+      "name": "SDR Discover",
+      "description": "Pulls raw candidate leads from Instantly SuperSearch, Apollo (paid /people/match enrichment unlocks emails inline), and LinkedIn (Unipile) \u2014 paginated, deduplicated, batch-appended to the Leads sheet. Bootstraps the sheet on first-ever run. Stops early once today's emailed-row count reaches the daily target (default 300).",
+      "skill_type": "sandbox",
+      "category": "sales",
+      "catalog_type": "platform",
+      "config": {},
+      "resource_requirements": [
+        {
+          "name": "Instantly API Key",
+          "env_var": "INSTANTLY_API_KEY",
+          "description": "From the Instantly gateway. Primary discovery source \u2014 SuperSearch preview is free of credit cost; emails are resolved downstream by the Hunter cascade."
+        },
+        {
+          "name": "Apollo API Key",
+          "env_var": "APOLLO_API_KEY",
+          "optional": true,
+          "description": "Optional. From the Apollo gateway. On a paid Apollo plan, /people/match enrichment unlocks emails + linkedin_url inline (1 unlock credit per row); search alone returns obfuscated previews on every tier."
+        },
+        {
+          "name": "Google Sheets OAuth",
+          "env_var": "GOOGLE_SHEETS_CREDENTIALS_JSON",
+          "description": "From the Google Sheets gateway. Required \u2014 this is where raw candidates get written and also used for cross-run dedup."
+        },
+        {
+          "name": "LinkedIn (Unipile) Account",
+          "env_var": "UNIPILE_ACCOUNT_ID",
+          "optional": true,
+          "description": "Optional. From the LinkedIn gateway. Enables LinkedIn search as a third discovery source."
+        },
+        {
+          "name": "Unipile DSN",
+          "env_var": "UNIPILE_DSN",
+          "optional": true,
+          "description": "Optional. Companion to UNIPILE_ACCOUNT_ID."
+        },
+        {
+          "name": "Unipile API Key",
+          "env_var": "UNIPILE_API_KEY",
+          "optional": true,
+          "description": "Optional. Companion to UNIPILE_ACCOUNT_ID."
+        }
+      ]
+    },
+    {
+      "skill_id": "search-kb",
+      "name": "Knowledge Base",
+      "description": "Search the agent's uploaded documents and knowledge base",
+      "skill_type": "tool",
+      "category": "general",
+      "catalog_type": "core",
+      "config": {}
+    },
+    {
+      "skill_id": "text-to-speech",
+      "name": "Text to Speech",
+      "description": "Convert text to speech audio file using gTTS (free, no API key needed)",
+      "skill_type": "sandbox",
+      "category": "voice",
+      "catalog_type": "core",
+      "config": {}
+    },
+    {
+      "skill_id": "web-search",
+      "name": "Web Search",
+      "description": "Search the web for current information, news, and answers",
+      "skill_type": "tool",
+      "category": "general",
+      "catalog_type": "core",
+      "config": {}
+    }
+  ],
+  "gateways": [
+    {
+      "platform": "gmail",
+      "name": "Gmail \u2014 mk@oya.ai",
+      "is_active": true
+    },
+    {
+      "platform": "apollo",
+      "name": "Apollo.io Gateway",
+      "is_active": true
+    },
+    {
+      "platform": "linkedin",
+      "name": "LinkedIn \u2014 ",
+      "is_active": true
+    }
+  ],
+  "routines": [
+    {
+      "name": "Daily LinkedIn SDR Outreach Run",
+      "description": "",
+      "schedule_human": "Every weekday at 8am",
+      "schedule_cron": "0 8 * * 1-5",
+      "prompt": "Run the full LinkedIn SDR sequence: (1) Use sdr-discover to pull up to 30 new prospect candidates matching the stored ICP. (2) For each candidate, use apollo to enrich contact and company data. (3) Use web-search to find recent trigger events (funding, hiring, news) for each prospect. (4) Use sales-outbound-strategist to qualify and rank the list \u2014 discard anyone below threshold. (5) For the top 20 qualified prospects, use marketing-linkedin-content-creator to draft a personalized connection note and 3-touch DM sequence. (6) Run fact-check on all personalization tokens. (7) Use linkedin-api to send connection requests with the personalized note (max 20/day). (8) Use linkedin-messaging-fixed-d7166c to check which prior connection requests were accepted, and send the appropriate follow-up DM (day-3 or day-7 touch) to those who accepted. (9) For any reply received, use linkedin-reply-suggester to craft the next response and send it. (10) For prospects who replied positively, use hunter to find their verified email and trigger a brevo warm email. (11) After all outreach, upsert every contacted prospect in hubspot-crm with the latest activity note, status, and timestamps. (12) Compile today's stats: new requests sent, acceptances, replies, positive signals, and emails found. Format as a clean HTML email digest and send to mk@oya.ai via gmail-send with subject 'LinkedIn SDR Daily Report \u2014 [date]'.",
+      "output_channel": "",
+      "is_active": true
+    },
+    {
+      "name": "Follow-up Pulse Check",
+      "description": "",
+      "schedule_human": "Every weekday at 2pm",
+      "schedule_cron": "0 14 * * 1-5",
+      "prompt": "Use linkedin-messaging-fixed-d7166c to read all active LinkedIn conversations. For any conversation with a new reply from a prospect, use linkedin-reply-suggester to generate a response and send the best option. Update the contact record in hubspot-crm with the conversation status. If a prospect indicates buying intent, use hunter to verify their email and send a warm introduction email via brevo. Log all actions to memory. Send a brief Slack-style summary email to mk@oya.ai via gmail-send listing any hot replies requiring human review.",
+      "output_channel": "",
+      "is_active": true
+    }
+  ],
+  "triggers": [],
+  "mcp_connections": [],
+  "memories": [],
+  "knowledge_base": [],
+  "tools_config": {}
+}
